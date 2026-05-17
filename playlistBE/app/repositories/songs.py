@@ -63,6 +63,11 @@ class SongRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
+    async def get_song_by_title(db, title: str):
+        result = await db.execute(select(Song).where(Song.title == title))
+        return result.scalar_one_or_none()
+
+    @staticmethod
     async def get_all_songs(db, limit: int, offset: int, search: str = ''):
         query = select(Song)
         if search:

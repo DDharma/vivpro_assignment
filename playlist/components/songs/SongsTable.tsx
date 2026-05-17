@@ -76,7 +76,7 @@ export function SongsTable({ rows, loading, error, sortKey, order, onSort, onRat
                 <TableRow
                   key={song.id}
                   className="cursor-pointer"
-                  onClick={() => router.push(`/song/${encodeURIComponent(song.id)}`)}
+                  onClick={() => song.title && router.push(`/song/by-title/${encodeURIComponent(song.title)}`)}
                 >
                   {TABLE_COLUMNS.map((col) => (
                     <TableCell key={col} className={col === "title" ? "font-medium" : undefined}>

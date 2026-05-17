@@ -37,6 +37,13 @@ class Song:
     @staticmethod
     async def get_song(db, id: str):
         return await song_repository.get_song(db, id)
+
+    @staticmethod
+    async def get_song_by_title(db, title: str):
+        song = await song_repository.get_song_by_title(db, title)
+        if song is None:
+            raise HTTPException(status_code=404, detail="Song not found")
+        return song
     
     @staticmethod
     async def give_rating(db, song_id: str, rating: int):

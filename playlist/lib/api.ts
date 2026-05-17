@@ -11,6 +11,9 @@ const list = (page = 1, limit = 1000, search_term?: string) =>
 const get = (id: string) =>
   defaultAxios.get<Song>(`/song/${encodeURIComponent(id)}`).then((r) => r.data);
 
+const getByTitle = (title: string) =>
+  defaultAxios.get<Song>(`/song/by-title`, { params: { title } }).then((r) => r.data);
+
 const rate = (song_id: string, rating: number) =>
   defaultAxios.post<Song>(`/song/give-rating`, { song_id, rating }).then((r) => r.data);
 
@@ -22,4 +25,4 @@ const downloadCsv = (page: number) =>
     .get<Blob>(`/song/download-csv`, { params: { page }, responseType: "blob" })
     .then((r) => r.data);
 
-export const songsApi = { list, get, rate, sync, downloadCsv };
+export const songsApi = { list, get, getByTitle, rate, sync, downloadCsv };

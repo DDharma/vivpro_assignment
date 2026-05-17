@@ -30,6 +30,10 @@ async def download_csv(page: int = 0, db: AsyncSession = Depends(get_db)):
         headers={"Content-Disposition": "attachment; filename=songs.csv"},
     )
 
+@router.get("/by-title", response_model=SongResponse, status_code=200)
+async def get_song_by_title(title: str, db: AsyncSession = Depends(get_db)):
+    return await song_service.get_song_by_title(db, title)
+
 @router.get("/{id}", response_model=SongResponse, status_code=200)
 async def get_song(id: str, db: AsyncSession = Depends(get_db)):
     return await song_service.get_song(db, id)
