@@ -15,7 +15,7 @@ class Song:
     async def sync_songs(db):
         with open(PLAYLIST_JSON) as f:
             data = json.load(f)
-        indices = list(data["id"].keys())          # ["0", "1", "2", ...]
+        indices = list(data["id"].keys())
         records = []
         for i in indices:
             row_dict = {}
@@ -56,7 +56,6 @@ class Song:
     @staticmethod
     async def download_csv(db, page: int = 0):
         songs, total = await song_repository.download_csv(db, page=page)
-        print(songs, total)
 
         if not songs:
             raise HTTPException(status_code=404, detail="No songs found")
