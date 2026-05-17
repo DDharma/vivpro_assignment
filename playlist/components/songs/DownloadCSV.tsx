@@ -1,33 +1,70 @@
 "use client"
 
-import * as React from "react"
+import { useState } from "react"
+import { Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { downloadCSV, toCSV } from "@/lib/csv"
-import { SONG_COLUMNS } from "@/components/songs/SongsTable"
-import type { Song } from "@/lib/types"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { songsApi } from "@/lib/api"
 
 type Props = {
-  songs: Song[]
-  filename?: string
+  currentPage: number
   disabled?: boolean
 }
 
-export function DownloadCSV({ songs, filename = "songs.csv", disabled }: Props) {
-  function handle() {
-    if (!songs.length) return
-    const csv = toCSV(songs as unknown as Record<string, unknown>[], [
-      "id",
-      ...SONG_COLUMNS,
-    ] as (keyof Song)[])
-    downloadCSV(filename, csv)
+export function DownloadCSV({ currentPage, disabled }: Props) {
+  const [open, setOpen] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+
+  async function download(page: number) {
+    setDownloading(true)
+    try {
+      const blob = await songsApi.downloadCsv(page)
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = page === 0 ? "songs-all.csv" : `songs-page-${page}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+      setOpen(false)
+    } finally {
+      setDownloading(false)
+    }
   }
+
   return (
-    <Button
-      variant="outline"
-      onClick={handle}
-      disabled={disabled || !songs.length}
-    >
-      Download CSV
-    </Button>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" disabled={disabled}>
+          <Download className="h-4 w-4" />
+          Download CSV
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Download CSV</DialogTitle>
+          <DialogDescription>
+            Choose whether to download the current page or all songs.
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => download(currentPage)} disabled={downloading}>
+            Current page (page {currentPage})
+          </Button>
+          <Button onClick={() => download(0)} disabled={downloading}>
+            {downloading ? "Downloading…" : "All data"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }

@@ -1,7 +1,10 @@
-from fastapi import HTTPException
-from app.repositories.songs import song_repository
+import csv
+import io
 import json
 from pathlib import Path
+
+from fastapi import HTTPException
+from app.repositories.songs import song_repository
 
 PLAYLIST_JSON = Path(__file__).resolve().parents[3] / "playlist.json"
 
@@ -22,13 +25,13 @@ class Song:
         return await song_repository.sync_songs(db, records)
     
     @staticmethod
-    async def get_songs(db, page: int = 1, limit: int = 10):
+    async def get_songs(db, page: int = 1, limit: int = 10, search: str = ''):
         if page < 1:
             page = 1
         if limit < 1:
             limit = 1
         offset = (page - 1) * limit
-        songs, total = await song_repository.get_all_songs(db, limit=limit, offset=offset)
+        songs, total = await song_repository.get_all_songs(db, limit=limit, offset=offset, search=search)
         return {"songs": songs, "total": total, "page": page, "limit": limit}
     
     @staticmethod
@@ -43,5 +46,32 @@ class Song:
             raise HTTPException(status_code=400, detail="Song ID must be provided")
         return await song_repository.give_rating(db, song_id, rating)     
     
+    @staticmethod
+    async def download_csv(db, page: int = 0):
+        songs, total = await song_repository.download_csv(db, page=page)
+        print(songs, total)
+
+        if not songs:
+            raise HTTPException(status_code=404, detail="No songs found")
+
+        output = io.StringIO()
+        writer = csv.writer(output)
+        writer.writerow([
+            "id", "title", "acousticness", "class", "danceability", "duration_ms",
+            "energy", "instrumentalness", "key", "liveness", "loudness", "mode",
+            "num_bars", "num_sections", "num_segments", "star_rating", "tempo",
+            "time_signature", "valence",
+        ])
+        for s in songs:
+            writer.writerow([
+                s.id, s.title, s.acousticness, s.class_, s.danceability, s.duration_ms,
+                s.energy, s.instrumentalness, s.key, s.liveness, s.loudness, s.mode,
+                s.num_bars, s.num_sections, s.num_segments, s.star_rating, s.tempo,
+                s.time_signature, s.valence,
+            ])
+        output.seek(0)
+        return output
+    
 
 song_service = Song()
+ 

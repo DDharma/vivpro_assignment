@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from "react"
+import { useState } from "react"
 import { cn } from "@/lib/utils"
 
 type Props = {
@@ -10,20 +10,18 @@ type Props = {
   readOnly?: boolean
 }
 
-const STAR_VALUES = [1, 2, 3, 4, 5] as const
+const STARS = [1, 2, 3, 4, 5] as const
 
 export function StarRating({ value, onChange, size = "md", readOnly = false }: Props) {
-  const [hover, setHover] = React.useState<number | null>(null)
+  const [hover, setHover] = useState<number | null>(null)
   const display = hover ?? value ?? 0
-  const px = size === "sm" ? "text-sm" : "text-base"
-
   return (
     <div
       role="radiogroup"
       aria-label="Star rating"
-      className={cn("inline-flex items-center gap-0.5", px)}
+      className={cn("inline-flex items-center gap-0.5", size === "sm" ? "text-sm" : "text-base")}
     >
-      {STAR_VALUES.map((star) => {
+      {STARS.map((star) => {
         const filled = star <= display
         return (
           <button

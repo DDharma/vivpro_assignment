@@ -1,43 +1,19 @@
 "use client"
 
-import * as React from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { EmptyState } from "@/components/ui/empty-state"
-import { Skeleton } from "@/components/ui/skeleton"
-import { cn } from "@/lib/utils"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 
 type Props = {
   title: string
-  description?: string
-  loading?: boolean
-  empty?: boolean
-  className?: string
   children: React.ReactNode
 }
 
-export function ChartCard({
-  title,
-  description,
-  loading,
-  empty,
-  className,
-  children,
-}: Props) {
+export function ChartCard({ title, children }: Props) {
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <Card>
       <CardHeader>
-        <CardTitle>{title}</CardTitle>
-        {description ? <CardDescription>{description}</CardDescription> : null}
+        <CardTitle className="text-base">{title}</CardTitle>
       </CardHeader>
-      <CardContent>
-        {loading ? (
-          <Skeleton className="h-[260px] w-full" />
-        ) : empty ? (
-          <EmptyState title="No data" description="Nothing to chart yet." />
-        ) : (
-          <div className="relative">{children}</div>
-        )}
-      </CardContent>
+      <CardContent className="overflow-x-auto">{children}</CardContent>
     </Card>
   )
 }

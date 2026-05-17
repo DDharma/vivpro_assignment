@@ -1,113 +1,55 @@
 "use client"
 
-import * as React from "react"
+import { useEffect, useRef } from "react"
 import * as d3 from "d3"
-import { ChartCard } from "@/components/charts/ChartCard"
-import { CHART_DIMENSIONS, VIEW_BOX, innerSize } from "@/lib/d3/chart"
-import { clearSvg, createTooltip } from "@/lib/d3/tooltip"
-import { formatNumber, truncate } from "@/lib/format"
 import type { Song } from "@/lib/types"
 
-type Props = { songs: Song[]; loading?: boolean }
+const W = 700
+const H = 300
+const M = { top: 16, right: 20, bottom: 40, left: 48 }
 
-export function DanceabilityScatter({ songs, loading }: Props) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null)
-  const svgRef = React.useRef<SVGSVGElement | null>(null)
+type Props = { songs: Song[] }
 
-  React.useEffect(() => {
-    if (!svgRef.current || !containerRef.current || songs.length === 0) return
-    clearSvg(svgRef.current)
-    const tooltip = createTooltip(containerRef.current)
+export function DanceabilityScatter({ songs }: Props) {
+  const ref = useRef<SVGSVGElement>(null)
 
-    const { innerWidth, innerHeight } = innerSize()
-    const { margin } = CHART_DIMENSIONS
-    const svg = d3
-      .select(svgRef.current)
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`)
+  useEffect(() => {
+    const svg = d3.select(ref.current)
+    svg.selectAll("*").remove()
+    if (!songs.length) return
 
-    const x = d3
-      .scaleLinear()
-      .domain([0, songs.length - 1])
-      .range([0, innerWidth])
+    const iw = W - M.left - M.right
+    const ih = H - M.top - M.bottom
+    const g = svg.append("g").attr("transform", `translate(${M.left},${M.top})`)
 
-    const y = d3.scaleLinear().domain([0, 1]).range([innerHeight, 0])
+    const x = d3.scaleLinear().domain([0, songs.length - 1]).range([0, iw])
+    const y = d3.scaleLinear().domain([0, 1]).range([ih, 0])
 
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${innerHeight})`)
-      .call(d3.axisBottom(x).ticks(Math.min(10, songs.length)))
-      .attr("color", "currentColor")
+    g.append("g").attr("transform", `translate(0,${ih})`).call(
+      d3.axisBottom(x).ticks(6).tickFormat((d) => `#${+d + 1}`)
+    )
+    g.append("g").call(d3.axisLeft(y).ticks(5))
 
-    svg.append("g").call(d3.axisLeft(y).ticks(5)).attr("color", "currentColor")
-
-    svg
-      .append("text")
-      .attr("x", innerWidth / 2)
-      .attr("y", innerHeight + 40)
-      .attr("text-anchor", "middle")
-      .attr("class", "fill-muted-foreground text-xs")
+    g.append("text")
+      .attr("x", iw / 2).attr("y", ih + 36)
+      .attr("text-anchor", "middle").attr("font-size", 11).attr("fill", "currentColor")
       .text("Song index")
 
-    svg
-      .append("text")
+    g.append("text")
       .attr("transform", "rotate(-90)")
-      .attr("x", -innerHeight / 2)
-      .attr("y", -44)
-      .attr("text-anchor", "middle")
-      .attr("class", "fill-muted-foreground text-xs")
+      .attr("x", -ih / 2).attr("y", -36)
+      .attr("text-anchor", "middle").attr("font-size", 11).attr("fill", "currentColor")
       .text("Danceability")
 
-    svg
-      .selectAll("circle")
+    g.selectAll("circle")
       .data(songs)
-      .enter()
-      .append("circle")
+      .join("circle")
       .attr("cx", (_, i) => x(i))
       .attr("cy", (d) => y(d.danceability))
-      .attr("r", 5)
-      .attr("class", "fill-primary/70 stroke-primary")
-      .attr("stroke-width", 1)
-      .on("mouseover", (event, d) =>
-        tooltip.show(
-          event,
-          `<div class="font-medium">${d.title}</div><div>Danceability: ${formatNumber(d.danceability)}</div>`,
-        ),
-      )
-      .on("mousemove", (event, d) =>
-        tooltip.show(
-          event,
-          `<div class="font-medium">${d.title}</div><div>Danceability: ${formatNumber(d.danceability)}</div>`,
-        ),
-      )
-      .on("mouseout", () => tooltip.hide())
-
-    return () => {
-      tooltip.destroy()
-      clearSvg(svgRef.current)
-    }
+      .attr("r", 4)
+      .attr("fill", "hsl(var(--primary))")
+      .attr("fill-opacity", 0.7)
   }, [songs])
 
-  return (
-    <ChartCard
-      title="Danceability"
-      description="Per-song danceability across the current page."
-      loading={loading}
-      empty={!loading && songs.length === 0}
-    >
-      <div ref={containerRef} className="relative w-full">
-        <svg
-          ref={svgRef}
-          viewBox={VIEW_BOX}
-          preserveAspectRatio="xMidYMid meet"
-          className="w-full h-auto"
-          role="img"
-          aria-label="Danceability scatter plot"
-        />
-      </div>
-    </ChartCard>
-  )
+  return <svg ref={ref} viewBox={`0 0 ${W} ${H}`} className="w-full" />
 }
-
-// reference truncate to avoid unused-import drift in shared file
-void truncate

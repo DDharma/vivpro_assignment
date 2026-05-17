@@ -1,139 +1,63 @@
 "use client"
 
-import * as React from "react"
+import { useEffect, useRef } from "react"
 import * as d3 from "d3"
-import { ChartCard } from "@/components/charts/ChartCard"
-import { CHART_DIMENSIONS, VIEW_BOX, innerSize } from "@/lib/d3/chart"
-import { clearSvg, createTooltip } from "@/lib/d3/tooltip"
-import { formatNumber, truncate } from "@/lib/format"
-import type { Song } from "@/lib/types"
+import type { Song, SongColumn } from "@/lib/types"
+
+const W = 700
+const H = 300
+const M = { top: 16, right: 20, bottom: 40, left: 52 }
 
 type Props = {
   songs: Song[]
-  loading?: boolean
-  title: string
-  description?: string
-  metric: keyof Pick<Song, "acousticness" | "tempo" | "energy" | "danceability">
-  yLabel: string
-  barClassName?: string
+  metric: SongColumn
+  label: string
+  unit?: string
 }
 
-export function MetricBarChart({
-  songs,
-  loading,
-  title,
-  description,
-  metric,
-  yLabel,
-  barClassName = "fill-chart-3",
-}: Props) {
-  const containerRef = React.useRef<HTMLDivElement | null>(null)
-  const svgRef = React.useRef<SVGSVGElement | null>(null)
+export function MetricBarChart({ songs, metric, label, unit = "" }: Props) {
+  const ref = useRef<SVGSVGElement>(null)
 
-  React.useEffect(() => {
-    if (!svgRef.current || !containerRef.current || songs.length === 0) return
-    clearSvg(svgRef.current)
-    const tooltip = createTooltip(containerRef.current)
+  useEffect(() => {
+    const svg = d3.select(ref.current)
+    svg.selectAll("*").remove()
+    if (!songs.length) return
 
-    const { innerWidth, innerHeight } = innerSize()
-    const { margin } = CHART_DIMENSIONS
-    const svg = d3
-      .select(svgRef.current)
-      .append("g")
-      .attr("transform", `translate(${margin.left},${margin.top})`)
+    const iw = W - M.left - M.right
+    const ih = H - M.top - M.bottom
+    const g = svg.append("g").attr("transform", `translate(${M.left},${M.top})`)
 
-    const x = d3
-      .scaleBand<string>()
-      .domain(songs.map((s) => s.id))
-      .range([0, innerWidth])
-      .padding(0.2)
+    const values = songs.map((s) => (s[metric] as number) ?? 0)
+    const x = d3.scaleBand().domain(songs.map((_, i) => String(i))).range([0, iw]).padding(0.15)
+    const y = d3.scaleLinear().domain([0, d3.max(values) ?? 1]).range([ih, 0]).nice()
 
-    const maxVal = d3.max(songs, (s) => s[metric] as number) ?? 1
-    const y = d3.scaleLinear().domain([0, maxVal]).nice().range([innerHeight, 0])
+    g.append("g")
+      .attr("transform", `translate(0,${ih})`)
+      .call(d3.axisBottom(x).tickValues([]).tickSizeOuter(0))
 
-    svg
-      .append("g")
-      .attr("transform", `translate(0,${innerHeight})`)
-      .call(
-        d3
-          .axisBottom(x)
-          .tickFormat((id) => {
-            const s = songs.find((song) => song.id === id)
-            return s ? truncate(s.title, 12) : ""
-          }),
-      )
-      .selectAll("text")
-      .attr("transform", "rotate(-35)")
-      .attr("text-anchor", "end")
-      .attr("class", "fill-muted-foreground text-[10px]")
+    g.append("g").call(d3.axisLeft(y).ticks(5).tickFormat((d) => `${d}${unit}`))
 
-    svg.select<SVGGElement>("g").attr("color", "currentColor")
-    svg.append("g").call(d3.axisLeft(y).ticks(5)).attr("color", "currentColor")
+    g.append("text")
+      .attr("x", iw / 2).attr("y", ih + 36)
+      .attr("text-anchor", "middle").attr("font-size", 11).attr("fill", "currentColor")
+      .text("Songs")
 
-    svg
-      .append("text")
-      .attr("x", innerWidth / 2)
-      .attr("y", innerHeight + 48)
-      .attr("text-anchor", "middle")
-      .attr("class", "fill-muted-foreground text-xs")
-      .text("Song")
-
-    svg
-      .append("text")
+    g.append("text")
       .attr("transform", "rotate(-90)")
-      .attr("x", -innerHeight / 2)
-      .attr("y", -44)
-      .attr("text-anchor", "middle")
-      .attr("class", "fill-muted-foreground text-xs")
-      .text(yLabel)
+      .attr("x", -ih / 2).attr("y", -42)
+      .attr("text-anchor", "middle").attr("font-size", 11).attr("fill", "currentColor")
+      .text(label)
 
-    svg
-      .selectAll("rect")
-      .data(songs)
-      .enter()
-      .append("rect")
-      .attr("x", (d) => x(d.id) ?? 0)
-      .attr("y", (d) => y(d[metric] as number))
+    g.selectAll("rect")
+      .data(values)
+      .join("rect")
+      .attr("x", (_, i) => x(String(i))!)
       .attr("width", x.bandwidth())
-      .attr("height", (d) => innerHeight - y(d[metric] as number))
-      .attr("class", barClassName)
-      .on("mouseover", (event, d) =>
-        tooltip.show(
-          event,
-          `<div class="font-medium">${d.title}</div><div>${yLabel}: ${formatNumber(d[metric] as number)}</div>`,
-        ),
-      )
-      .on("mousemove", (event, d) =>
-        tooltip.show(
-          event,
-          `<div class="font-medium">${d.title}</div><div>${yLabel}: ${formatNumber(d[metric] as number)}</div>`,
-        ),
-      )
-      .on("mouseout", () => tooltip.hide())
+      .attr("y", (d) => y(d))
+      .attr("height", (d) => ih - y(d))
+      .attr("fill", "hsl(var(--primary))")
+      .attr("fill-opacity", 0.8)
+  }, [songs, metric, label, unit])
 
-    return () => {
-      tooltip.destroy()
-      clearSvg(svgRef.current)
-    }
-  }, [songs, metric, yLabel, barClassName])
-
-  return (
-    <ChartCard
-      title={title}
-      description={description}
-      loading={loading}
-      empty={!loading && songs.length === 0}
-    >
-      <div ref={containerRef} className="relative w-full">
-        <svg
-          ref={svgRef}
-          viewBox={VIEW_BOX}
-          preserveAspectRatio="xMidYMid meet"
-          className="w-full h-auto"
-          role="img"
-          aria-label={`${title} bar chart`}
-        />
-      </div>
-    </ChartCard>
-  )
+  return <svg ref={ref} viewBox={`0 0 ${W} ${H}`} className="w-full" />
 }

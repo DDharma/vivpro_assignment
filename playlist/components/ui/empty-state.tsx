@@ -1,11 +1,11 @@
-import * as React from "react"
+import type { ComponentProps, ReactNode } from "react"
 import { cn } from "@/lib/utils"
 
-type EmptyStateProps = React.ComponentProps<"div"> & {
+type EmptyStateProps = ComponentProps<"div"> & {
   title: string
   description?: string
-  icon?: React.ReactNode
-  action?: React.ReactNode
+  icon?: ReactNode
+  action?: ReactNode
 }
 
 function EmptyState({

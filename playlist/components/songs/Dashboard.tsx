@@ -1,108 +1,157 @@
 "use client"
 
-import * as React from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { useEffect, useState } from "react"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card"
 import { SongsTable } from "@/components/songs/SongsTable"
 import { Pagination } from "@/components/songs/Pagination"
 import { SearchByTitle } from "@/components/songs/SearchByTitle"
 import { DownloadCSV } from "@/components/songs/DownloadCSV"
+import { SyncSongs } from "@/components/songs/SyncSongs"
+import { ChartCard } from "@/components/charts/ChartCard"
 import { DanceabilityScatter } from "@/components/charts/DanceabilityScatter"
 import { DurationHistogram } from "@/components/charts/DurationHistogram"
-import { AcousticnessBar } from "@/components/charts/AcousticnessBar"
-import { TempoBar } from "@/components/charts/TempoBar"
-import { useSongs, useSongSearch } from "@/hooks/useSongs"
-import type { SongColumn, SortOrder } from "@/lib/types"
+import { MetricBarChart } from "@/components/charts/MetricBarChart"
+import { songsApi } from "@/lib/api"
+import { nextOrder, sortBy } from "@/lib/sort"
+import type { Song, SongColumn, SortOrder } from "@/lib/types"
 
-const PAGE_SIZE = 10
+const LIMIT = 10
 
 export function Dashboard() {
-  const [page, setPage] = React.useState(1)
-  const [sortBy, setSortBy] = React.useState<SongColumn | undefined>(undefined)
-  const [order, setOrder] = React.useState<SortOrder | undefined>(undefined)
+  const [songs, setSongs] = useState<Song[]>([])
+  const [total, setTotal] = useState(0)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [page, setPage] = useState(1)
+  const [sortKey, setSortKey] = useState<SongColumn | undefined>(undefined)
+  const [order, setOrder] = useState<SortOrder | undefined>(undefined)
+  const [query, setQuery] = useState("")
+  const [tick, setTick] = useState(0)
 
-  const { songs, pagination, loading, error, updateRating } = useSongs({
-    page,
-    limit: PAGE_SIZE,
-    sort_by: sortBy,
-    order,
-  })
-  const search = useSongSearch()
+  useEffect(() => {
+    let active = true
+    songsApi
+      .list(page, LIMIT, query.trim() || undefined)
+      .then((res) => {
+        if (!active) return
+        setSongs(res.songs ?? [])
+        setTotal(res.total ?? 0)
+        setError(null)
+        setLoading(false)
+      })
+      .catch((err: unknown) => {
+        if (!active) return
+        setSongs([])
+        setError(typeof err === "string" ? err : "Failed to load songs")
+        setLoading(false)
+      })
+    return () => { active = false }
+  }, [page, query, tick])
 
-  function toggleSort(column: SongColumn) {
-    if (sortBy !== column) {
-      setSortBy(column)
-      setOrder("asc")
-      setPage(1)
-      return
-    }
-    if (order === "asc") {
-      setOrder("desc")
-    } else {
-      setSortBy(undefined)
-      setOrder(undefined)
-    }
+  const rows = sortKey && order ? sortBy(songs, sortKey, order) : songs
+  const totalPages = Math.ceil(total / LIMIT)
+
+  function handleSort(column: SongColumn) {
+    const sameKey = sortKey === column
+    const next = nextOrder(order, sameKey)
+    setSortKey(next ? column : undefined)
+    setOrder(next)
+  }
+
+  function handleSearch(value: string) {
+    setLoading(true)
+    setQuery(value)
     setPage(1)
   }
 
+  function handlePageChange(p: number) {
+    setLoading(true)
+    setPage(p)
+  }
+
   async function handleRate(id: string, rating: number) {
+    const prev = songs
+    setSongs(songs.map((s) => (s.id === id ? { ...s, star_rating: rating } : s)))
     try {
-      await updateRating(id, rating)
+      await songsApi.rate(id, rating)
     } catch {
-      /* error surfaced via refetch in the hook */
+      setSongs(prev)
     }
   }
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="flex items-center justify-end">
+        <SyncSongs onSynced={() => { setPage(1); setTick((t) => t + 1) }} disabled={loading} />
+      </div>
+
       <Card>
         <CardHeader>
           <CardTitle>Find a song</CardTitle>
-          <CardDescription>Look up a specific track by title.</CardDescription>
+          <CardDescription>Filter the playlist by title.</CardDescription>
         </CardHeader>
         <CardContent>
-          <SearchByTitle
-            result={search.result}
-            loading={search.loading}
-            error={search.error}
-            notFound={search.notFound}
-            onSearch={search.search}
-            onClear={search.reset}
-          />
+          <SearchByTitle query={query} onSearch={handleSearch} disabled={loading} />
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader className="flex-row items-center justify-between gap-3">
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex flex-col gap-1">
             <CardTitle>Playlist</CardTitle>
             <CardDescription>
-              {pagination
-                ? `Showing ${songs.length} of ${pagination.total} songs`
-                : "Loading playlist…"}
+              {loading
+                ? "Loading playlist…"
+                : `Showing ${rows.length} of ${total} song${total === 1 ? "" : "s"}`}
             </CardDescription>
           </div>
-          <DownloadCSV songs={songs} disabled={loading} />
+          <DownloadCSV currentPage={page} disabled={loading} />
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <SongsTable
-            songs={songs}
+            rows={rows}
             loading={loading}
             error={error}
-            sortBy={sortBy}
+            sortKey={sortKey}
             order={order}
-            onSort={toggleSort}
+            onSort={handleSort}
             onRate={handleRate}
           />
-          <Pagination pagination={pagination} loading={loading} onChange={setPage} />
+          <Pagination
+            page={page}
+            totalPages={totalPages}
+            total={total}
+            loading={loading}
+            onChange={handlePageChange}
+          />
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <DanceabilityScatter songs={songs} loading={loading} />
-        <DurationHistogram songs={songs} loading={loading} />
-        <AcousticnessBar songs={songs} loading={loading} />
-        <TempoBar songs={songs} loading={loading} />
-      </div>
+      {songs.length > 0 && (
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+          <ChartCard title="Danceability — Scatter">
+            <DanceabilityScatter songs={songs} />
+          </ChartCard>
+
+          <ChartCard title="Duration — Histogram">
+            <DurationHistogram songs={songs} />
+          </ChartCard>
+
+          <ChartCard title="Acousticness — Bar Chart">
+            <MetricBarChart songs={songs} metric="acousticness" label="Acousticness (0–1)" />
+          </ChartCard>
+
+          <ChartCard title="Tempo — Bar Chart">
+            <MetricBarChart songs={songs} metric="tempo" label="Tempo (BPM)" unit=" BPM" />
+          </ChartCard>
+        </div>
+      )}
     </div>
   )
 }

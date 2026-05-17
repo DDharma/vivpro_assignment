@@ -63,10 +63,12 @@ class SongRepository:
         return result.scalar_one_or_none()
 
     @staticmethod
-    async def get_all_songs(db, limit: int, offset: int):
-        result = await db.execute(select(Song).limit(limit).offset(offset))
-        songs = result.scalars().all()
-        total = await db.scalar(select(func.count()).select_from(Song))
+    async def get_all_songs(db, limit: int, offset: int, search: str = ''):
+        query = select(Song)
+        if search:
+            query = query.where(Song.title.ilike(f"%{search}%"))
+        songs = (await db.execute(query.limit(limit).offset(offset))).scalars().all()
+        total = await db.scalar(select(func.count()).select_from(query.subquery()))
         return songs, total
     
     @staticmethod
@@ -82,6 +84,14 @@ class SongRepository:
         except Exception as e:
             await db.rollback()
             raise e
+        
+    @staticmethod
+    async def download_csv(db, page: int = 0):
+        if page == 0:
+            songs, total = await SongRepository.get_all_songs(db, limit=1_000_000, offset=0)
+        else:
+            songs, total = await SongRepository.get_all_songs(db, limit=10, offset=(page - 1) * 10)
+        return songs, total
         
 
 

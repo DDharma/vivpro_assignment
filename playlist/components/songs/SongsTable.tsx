@@ -1,6 +1,6 @@
 "use client"
 
-import * as React from "react"
+import { useRouter } from "next/navigation"
 import {
   Table,
   TableBody,
@@ -13,14 +13,14 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { EmptyState } from "@/components/ui/empty-state"
 import { SortableHeader } from "@/components/songs/SortableHeader"
 import { StarRating } from "@/components/songs/StarRating"
-import { columnLabel, formatNumber } from "@/lib/format"
+import { columnLabel, formatCell } from "@/lib/format"
 import type { Song, SongColumn, SortOrder } from "@/lib/types"
 
-const COLUMNS: SongColumn[] = [
+export const TABLE_COLUMNS: SongColumn[] = [
   "title",
   "danceability",
   "energy",
-  "mood",
+  "mode",
   "acousticness",
   "tempo",
   "duration_ms",
@@ -30,52 +30,30 @@ const COLUMNS: SongColumn[] = [
 ]
 
 type Props = {
-  songs: Song[]
+  rows: Song[]
   loading: boolean
   error: string | null
-  sortBy?: SongColumn
+  sortKey?: SongColumn
   order?: SortOrder
   onSort: (column: SongColumn) => void
   onRate: (id: string, rating: number) => void | Promise<void>
 }
 
-function CellValue({ song, column }: { song: Song; column: SongColumn }) {
-  const value = song[column]
-  if (column === "star_rating") return null
-  if (value === null || value === undefined) return <span className="text-muted-foreground">—</span>
-  if (typeof value === "number") return <>{formatNumber(value)}</>
-  return <>{value}</>
-}
-
-export function SongsTable({
-  songs,
-  loading,
-  error,
-  sortBy,
-  order,
-  onSort,
-  onRate,
-}: Props) {
-  if (error) {
-    return (
-      <EmptyState
-        title="Couldn't load songs"
-        description={error}
-      />
-    )
-  }
+export function SongsTable({ rows, loading, error, sortKey, order, onSort, onRate }: Props) {
+  const router = useRouter()
+  if (error) return <EmptyState title="Couldn't load songs" description={error} />
 
   return (
     <div className="rounded-lg border bg-card">
       <Table>
         <TableHeader>
           <TableRow>
-            {COLUMNS.map((col) => (
+            {TABLE_COLUMNS.map((col) => (
               <TableHead key={col}>
                 <SortableHeader
                   column={col}
                   label={columnLabel(col)}
-                  sortBy={sortBy}
+                  sortKey={sortKey}
                   order={order}
                   onSort={onSort}
                 />
@@ -84,39 +62,42 @@ export function SongsTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {loading && songs.length === 0
+          {loading && rows.length === 0
             ? Array.from({ length: 10 }).map((_, i) => (
                 <TableRow key={`sk-${i}`}>
-                  {COLUMNS.map((col) => (
+                  {TABLE_COLUMNS.map((col) => (
                     <TableCell key={col}>
                       <Skeleton className="h-4 w-20" />
                     </TableCell>
                   ))}
                 </TableRow>
               ))
-            : songs.map((song) => (
-                <TableRow key={song.id}>
-                  {COLUMNS.map((col) => (
-                    <TableCell
-                      key={col}
-                      className={col === "title" ? "font-medium" : undefined}
-                    >
+            : rows.map((song) => (
+                <TableRow
+                  key={song.id}
+                  className="cursor-pointer"
+                  onClick={() => router.push(`/song/${encodeURIComponent(song.id)}`)}
+                >
+                  {TABLE_COLUMNS.map((col) => (
+                    <TableCell key={col} className={col === "title" ? "font-medium" : undefined}>
                       {col === "star_rating" ? (
-                        <StarRating
-                          value={song.star_rating}
-                          onChange={(r) => onRate(song.id, r)}
-                          size="sm"
-                        />
+                        <span onClick={(e) => e.stopPropagation()}>
+                          <StarRating
+                            value={song.star_rating}
+                            onChange={(r) => onRate(song.id, r)}
+                            size="sm"
+                          />
+                        </span>
                       ) : (
-                        <CellValue song={song} column={col} />
+                        formatCell(song[col])
                       )}
                     </TableCell>
                   ))}
                 </TableRow>
               ))}
-          {!loading && songs.length === 0 ? (
+          {!loading && rows.length === 0 ? (
             <TableRow>
-              <TableCell colSpan={COLUMNS.length} className="text-center py-8">
+              <TableCell colSpan={TABLE_COLUMNS.length} className="text-center py-8">
                 <span className="text-sm text-muted-foreground">No songs to show</span>
               </TableCell>
             </TableRow>
@@ -126,5 +107,3 @@ export function SongsTable({
     </div>
   )
 }
-
-export { COLUMNS as SONG_COLUMNS }

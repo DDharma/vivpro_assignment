@@ -1,14 +1,22 @@
 export type Song = {
   id: string
-  title: string
+  title: string | null
   danceability: number
   energy: number
-  mood: number
   acousticness: number
-  tempo: number
+  instrumentalness: number
+  liveness: number
+  loudness: number
+  valence: number | null
+  tempo: number | null
+  key: number
+  mode: number
+  class_: number
   duration_ms: number
+  num_bars: number
   num_sections: number
   num_segments: number
+  time_signature: number | null
   star_rating: number | null
 }
 
@@ -16,26 +24,24 @@ export type SongColumn = keyof Song
 
 export type SortOrder = "asc" | "desc"
 
-export type Pagination = {
+export type SongListResponse = {
+  songs: Song[]
+  total: number
   page: number
   limit: number
-  total: number
-  total_pages: number
 }
 
-export type PaginatedSongs = {
-  data: Song[]
-  pagination: Pagination
+export type RatingPayload = {
+  song_id: string
+  rating: number
 }
 
-export type SongsQuery = {
-  page?: number
-  limit?: number
-  sort_by?: SongColumn
-  order?: SortOrder
+export type SyncResponse = {
+  message: string
+  count: number
 }
 
-export type ApiError = {
-  error: string
-  [key: string]: unknown
+export type ApiErrorBody = {
+  detail?: string | Array<{ msg: string }>
+  error?: string
 }
