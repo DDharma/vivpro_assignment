@@ -1,5 +1,6 @@
-from pydantic import BaseMode, Field, validator
 from typing import Optional
+
+from pydantic import BaseModel, Field
 
 
 class SongSchema(BaseModel):
@@ -25,3 +26,42 @@ class SongSchema(BaseModel):
     class Config:
         from_attributes = True
         populate_by_name = True
+
+class SongResponse(BaseModel):
+    id: str
+    acousticness: float
+    class_: int
+    danceability: float
+    duration_ms: int
+    energy: float
+    instrumentalness: float
+    key: int
+    liveness: float
+    loudness: float
+    mode: int
+    num_bars: int
+    num_sections: int
+    num_segments: int
+    tempo: Optional[float]
+    time_signature: Optional[int]
+    title: Optional[str]
+    valence: Optional[float]
+    star_rating: Optional[int]
+
+    class Config:
+        from_attributes = True
+        populate_by_name = True
+
+class SyncSongResponse(BaseModel):
+    message: str
+    count: int
+
+class SongListResponse(BaseModel):
+    songs: list[SongResponse]
+    total: int
+    page: int
+    limit: int
+
+class Rating(BaseModel):
+    song_id: str = Field(..., description="The unique identifier of the song")
+    rating: int = Field(..., description="The rating for the song")

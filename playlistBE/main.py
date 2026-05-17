@@ -1,10 +1,8 @@
 import uvicorn
 from fastapi import FastAPI
-from app.core.database import AsyncSessionLocal, engine, Base
-# from app.models.postgres.user import User  # Import your models to create tables
-# from app.models.postgres.credit import CreditBalance
+from app.core.database import engine, Base
+from app.models.song import Song
 from app.api import health, songs
-# from app.models.postgres.uploaded_file import UploadedFile
 
 app = FastAPI()
 
